@@ -3,30 +3,33 @@ import glob
 import os
 import tensorflow as tf
 import numpy as np
+import matplotlib.image as mpimg
 import time
 import datetime
 
-path='C:/Users/Administrator/Desktop/ML/bottle/drink_data/'
+path='drink_data/'
 #要训练的图片保存的地址
 #模型保存地址
 
 #将所有的图片resize成w*c,然后为RGB三色彩通道
-w=128
-h=128
+w=200
+h=150
 c=3
 
 
 #读取图片
 def read_img(path):
     cate=[path+x for x in os.listdir(path) if os.path.isdir(path+x)]
+    #获取各类数据的名字,cate为所有该路径下的文件夹名字
     imgs=[]
     labels=[]
-    #cate为所有路径下的文件夹名字
     for idx,folder in enumerate(cate):
+        #print(idx,folder)
         for im in glob.glob(folder+'/*.jpg'):
             #输出读取了的模型的图片名
             #print('reading the images:%s'%(im))
             img=io.imread(im)
+            tf.image.flip_left_right(img) #进行了旋转，
             img=transform.resize(img,(w,h))
             #改变其尺寸的大小
             imgs.append(img)
@@ -77,7 +80,7 @@ def inference(input_tensor, train, regularizer):
         relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_biases))
 
     with tf.name_scope("layer4-pool2"):#再进行一遍缩小
-        pool2 = tf.nn.max_pool(relu2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+        pool2 = tf.nn.max_pool(relu2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')#38*50
 
     with tf.variable_scope("layer5-conv3"):
         conv3_weights = tf.get_variable("weight",[3,3,64,128],initializer=tf.truncated_normal_initializer(stddev=0.1))
@@ -86,7 +89,7 @@ def inference(input_tensor, train, regularizer):
         relu3 = tf.nn.relu(tf.nn.bias_add(conv3, conv3_biases))
 
     with tf.name_scope("layer6-pool3"):#再缩小一次,总共用2*2池化了4次
-        pool3 = tf.nn.max_pool(relu3, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+        pool3 = tf.nn.max_pool(relu3, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')#19*25
 
     with tf.variable_scope("layer7-conv4"):
         conv4_weights = tf.get_variable("weight",[3,3,128,128],initializer=tf.truncated_normal_initializer(stddev=0.1))
@@ -94,9 +97,9 @@ def inference(input_tensor, train, regularizer):
         conv4 = tf.nn.conv2d(pool3, conv4_weights, strides=[1, 1, 1, 1], padding='SAME')
         relu4 = tf.nn.relu(tf.nn.bias_add(conv4, conv4_biases))
     #最后这里得到的为6*6*128的网络结构
-    with tf.name_scope("layer8-pool4"):#缩小总共4次
+    with tf.name_scope("layer8-pool4"):#缩小总共4次,10*13
         pool4 = tf.nn.max_pool(relu4, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-        nodes = 8*8*128
+        nodes = 10*13*128
         reshaped = tf.reshape(pool4,[-1,nodes])
 
     with tf.variable_scope('layer9-fc1'):
@@ -144,22 +147,21 @@ acc= tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
 
 #定义一个函数，按批次取数据
-def minibatches(inputs=None, targets=None, batch_size=None, shuffle=False):
+def minibatches(inputs=None, targets=None, batch_size=None, shuffle=True):
     assert len(inputs) == len(targets)
-    if shuffle:
-        indices = np.arange(len(inputs))
-        np.random.shuffle(indices)
+    indices = np.arange(len(inputs))
+    np.random.shuffle(indices)
     for start_idx in range(0, len(inputs) - batch_size + 1, batch_size):
-        if shuffle:
-            excerpt = indices[start_idx:start_idx + batch_size]
-        else:
-            excerpt = slice(start_idx, start_idx + batch_size)
+        #if shuffle:
+        excerpt = indices[start_idx:start_idx + batch_size]
+        # else:
+        #     excerpt = slice(start_idx, start_idx + batch_size)
         yield inputs[excerpt], targets[excerpt]
 
 
 #训练的次数，太多会过拟合的
-Times=5
-batch_size=64
+Times=5 #这里是调整训练次数
+batch_size=64  #这里上batch_size
 saver=tf.train.Saver()
 sess=tf.Session()
 sess.run(tf.global_variables_initializer())
@@ -170,13 +172,14 @@ start_time = datetime.datetime.now()
 print('开始训练时间为:  ' ,start_time.strftime('%Y-%m-%d %H:%M:%S '))
 
 for epoch in range(Times):
-    #加下面2行是调用之前的模型
-    #model_path = "model/model.ckpt"
+    model_path = "../model/model.ckpt"
+
+    # 加下面2行是调用之前的模型
     #saver.restore(sess, model_path)
     #training
     train_loss, train_acc, n_batch = 0, 0, 0
     #这里是把所有的数据都训练一遍，然后输出一次结果
-    for x_train_a, y_train_a in minibatches(x_train, y_train, batch_size, shuffle=True):
+    for x_train_a, y_train_a in minibatches(x_train, y_train, batch_size):
         _,err,ac=sess.run([train_op,loss,acc], feed_dict={x: x_train_a, y_: y_train_a})
         train_loss += err; train_acc += ac; n_batch += 1
     current_time = datetime.datetime.now()

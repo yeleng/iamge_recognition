@@ -1,4 +1,6 @@
 # iamge_recognition
+非常抱歉，由于目前处于商业用途，源码不方便展示！！
+
 场景：基于无人售货机的一个物品识别基础版本
 
 基于无人售货机的一个对货品的图像识别 用了11层网络 
@@ -19,4 +21,3 @@
 1、loss的结果为nan(说明你最后一个全连接层的分类结果没设置正确
 2、验证结果出现错误，找不到正确的文件(把我源码中的model/model.ckpt.meta修改为model/model.ckpt即可
 
-更多详细了解 菜鸡blog:https://blog.csdn.net/qq_36124802/article/details/80172827
